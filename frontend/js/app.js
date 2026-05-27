@@ -162,30 +162,69 @@ function mostrarPagina(nome, navEl) {
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────
+function setEl(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
 async function dashboard() {
   const d = await api('GET', '/dashboard');
   if (!d) return;
-  document.getElementById('mSessoesHoje').textContent    = d.sessoes_hoje || 0;
-  document.getElementById('mPacientes').textContent      = d.pacientes_ativos || 0;
-  document.getElementById('mReceita').textContent        = fmtMoeda(d.receita_mes);
-  document.getElementById('mTaxaPresenca').textContent   = (d.taxa_presenca || 0) + '%';
+
+  setEl('mSessoesHoje',  d.sessoes_hoje || 0);
+  setEl('mPacientes',    d.pacientes_ativos || 0);
+  setEl('mReceita',      fmtMoeda(d.receita_mes));
+  setEl('mTaxaPresenca', (d.taxa_presenca || 0) + '%');
+  setEl('mTaxa',         (d.taxa_presenca || 0) + '%');
+  setEl('dashData',      'Atualizado agora · ' + new Date().toLocaleTimeString('pt-BR'));
 
   // Sessões de hoje
   const s = await api('GET', '/sessoes/hoje');
-  if (!s) return;
-  document.getElementById('sessoesHojeTabela').innerHTML = s.length === 0
-    ? '<tr><td colspan="5" class="text-center text-muted py-3">Nenhuma sessão hoje.</td></tr>'
-    : s.map(x => `<tr>
-        <td>${fmtHora(x.data_hora_inicio)}</td>
-        <td>${x.paciente?.usuario?.nome || '—'}</td>
-        <td><span class="badge bg-light text-dark">${x.modalidade}</span></td>
-        <td>${badgeStatus(x.status)}</td>
-        <td>${x.sala_id ? 'Sala ' + x.sala_id : 'Online'}</td>
-      </tr>`).join('');
+  const tabela = document.getElementById('sessoesHojeTabela');
+  if (s && tabela) {
+    tabela.innerHTML = s.length === 0
+      ? '<tr><td colspan="5" style="text-align:center;color:#A0AEC0;padding:24px">Nenhuma sessão hoje.</td></tr>'
+      : s.map(x => `<tr>
+          <td>${fmtHora(x.data_hora_inicio)}</td>
+          <td>${x.paciente?.usuario?.nome || '—'}</td>
+          <td><span class="badge badge-gray">${x.modalidade}</span></td>
+          <td>${badgeStatus(x.status)}</td>
+          <td>${x.sala_id ? 'Sala ' + x.sala_id : 'Online'}</td>
+        </tr>`).join('');
+  }
+
+  // Stats do gráfico de rosca
+  if (s) {
+    setEl('statConfirmadas', s.filter(x => x.status === 'confirmada').length);
+    setEl('statAgendadas',   s.filter(x => x.status === 'agendada').length);
+    setEl('statCanceladas',  s.filter(x => x.status === 'cancelada').length);
+  }
 
   // Gráfico receita
   const receita = await api('GET', '/financeiro/receita-mensal?ano=' + new Date().getFullYear());
   if (receita) renderGraficoReceita(receita);
+
+  // Gráfico status
+  if (s) renderGraficoStatus(s);
+}
+
+function renderGraficoStatus(sessoes) {
+  const ctx = document.getElementById('chartStatusDash');
+  if (!ctx) return;
+  const confirmadas = sessoes.filter(x => x.status === 'confirmada').length;
+  const agendadas   = sessoes.filter(x => x.status === 'agendada').length;
+  const canceladas  = sessoes.filter(x => x.status === 'cancelada').length;
+  if (window.chartStatusDash) window.chartStatusDash.destroy();
+  window.chartStatusDash = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Confirmadas','Agendadas','Canceladas'],
+      datasets: [{ data: [confirmadas, agendadas, canceladas],
+        backgroundColor: ['#00B87C','#FDCB6E','#E17055'], borderWidth: 0 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '65%',
+               plugins: { legend: { display: false } } }
+  });
 }
 
 function renderGraficoReceita(dados) {
@@ -480,11 +519,13 @@ async function toggleTarefa(id) {
 // ── TABS ──────────────────────────────────────────────────────
 function switchTab(btn, tabId) {
   const parent = btn.closest('[data-tab-group]');
+  if (!parent) return;
   parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   const groupId = parent.dataset.tabGroup;
   document.querySelectorAll(`[data-tab="${groupId}"]`).forEach(t => t.style.display = 'none');
-  document.getElementById(tabId).style.display = 'block';
+  const target = document.getElementById(tabId);
+  if (target) target.style.display = 'block';
 }
 
 // ── PRONTUÁRIO SAVE ───────────────────────────────────────────
@@ -686,21 +727,36 @@ async function documentos() {
 }
 
 async function gerarDocumento() {
-  const tipo      = document.getElementById('docTipo')?.value;
-  const pacienteEl = document.getElementById('docPaciente');
-  const pacienteId = pacienteEl?.value;
-
+  const tipo       = document.getElementById('docTipo')?.value;
+  const pacienteId = document.getElementById('docPaciente')?.value;
   if (!pacienteId) return alert('Selecione um paciente.');
 
+  let url = '';
   if (tipo === 'laudo') {
-    window.open(`${window.location.origin}/api/documentos/laudo/${pacienteId}`, '_blank');
-    return;
+    url = `${API}/documentos/laudo/${pacienteId}`;
+  } else {
+    // Buscar último pagamento pago do paciente
+    const pagamentos = await api('GET', `/financeiro?status=pago`) || [];
+    const pag = pagamentos.find(p => String(p.paciente_id) === String(pacienteId));
+    if (!pag) return alert('Nenhum pagamento encontrado para este paciente.\nCadastre um pagamento primeiro.');
+    url = `${API}/documentos/recibo/${pag.id}`;
   }
 
-  // Para recibo, buscar último pagamento do paciente
-  const pagamentos = await api('GET', `/financeiro?status=pago`) || [];
-  const pag = pagamentos.find(p => String(p.paciente_id) === String(pacienteId));
-  if (!pag) return alert('Nenhum pagamento encontrado para este paciente.\nCadastre um pagamento primeiro.');
-
-  window.open(`${window.location.origin}/api/documentos/recibo/${pag.id}`, '_blank');
+  // Baixar PDF com token de autenticação
+  try {
+    const resp = await fetch(url, { headers: authHeader() });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      return alert('Erro: ' + (err.erro || resp.statusText));
+    }
+    const blob = await resp.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = tipo === 'laudo' ? 'laudo.pdf' : 'recibo.pdf';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+  } catch(e) {
+    alert('Erro ao baixar PDF: ' + e.message);
+  }
 }
