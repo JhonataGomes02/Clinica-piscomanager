@@ -5,13 +5,13 @@ function registrarAssociacoes() {
   if (associacoesRegistradas) return;
   associacoesRegistradas = true;
 
-  const Usuario    = require('./models/Usuario');
-  const Paciente   = require('./models/Paciente');
-  const Sessao     = require('./models/Sessao');
-  const Prontuario = require('./models/Prontuario');
-  const Evolucao   = require('./models/Evolucao');
-  const Pagamento  = require('./models/Pagamento');
-  const Tarefa     = require('./models/Tarefa');
+  const Usuario    = require('../models/Usuario');
+  const Paciente   = require('../models/Paciente');
+  const Sessao     = require('../models/Sessao');
+  const Prontuario = require('../models/Prontuario');
+  const Evolucao   = require('../models/Evolucao');
+  const Pagamento  = require('../models/Pagamento');
+  const Tarefa     = require('../models/Tarefa');
 
   Paciente.belongsTo(Usuario,  { foreignKey: 'usuario_id',   as: 'usuario' });
   Paciente.belongsTo(Usuario,  { foreignKey: 'psicologo_id', as: 'psicologo' });
