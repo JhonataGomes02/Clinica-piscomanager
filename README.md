@@ -1,7 +1,7 @@
 # PsicoManager — Sistema de Gestão Psicológica
 
 > Projeto Final — IHC (Interface Homem Computador)  
-> SENAI CIMATEC · Professor Celso Barreto · 2025
+> SENAI CIMATEC · Professor Celso Barreto · 2026
 
 ---
 
