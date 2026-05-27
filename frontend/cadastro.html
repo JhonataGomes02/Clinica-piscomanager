@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PsicoManager — Cadastro</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+  <link rel="stylesheet" href="css/style.css"/>
+  <style>
+    .cadastro-card {
+      background: rgba(255,255,255,.97);
+      border-radius: 20px;
+      box-shadow: 0 25px 80px rgba(0,0,0,.35);
+      padding: 40px;
+      width: 100%;
+      max-width: 520px;
+      position: relative;
+      z-index: 1;
+    }
+    .step-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      margin-bottom: 28px;
+    }
+    .step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .step-circle {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700;
+      border: 2px solid #E2E8F0;
+      background: #F7FAFC; color: #A0AEC0;
+      transition: all .3s;
+    }
+    .step-circle.active { background: var(--teal); border-color: var(--teal); color: #fff; }
+    .step-circle.done   { background: var(--teal); border-color: var(--teal); color: #fff; }
+    .step-label { font-size: 11px; color: #A0AEC0; font-weight: 500; }
+    .step-label.active { color: var(--teal-dark); }
+    .step-line {
+      width: 60px; height: 2px;
+      background: #E2E8F0; margin-bottom: 18px;
+      transition: background .3s;
+    }
+    .step-line.done { background: var(--teal); }
+
+    .step-content { display: none; }
+    .step-content.active { display: block; }
+
+    .input-icon-wrap { position: relative; }
+    .input-icon-wrap i {
+      position: absolute; left: 12px; top: 50%;
+      transform: translateY(-50%);
+      color: #A0AEC0; font-size: 16px; pointer-events: none;
+    }
+    .input-icon-wrap .form-control-custom { padding-left: 38px; }
+
+    .senha-strength { margin-top: 6px; }
+    .strength-bar {
+      height: 4px; border-radius: 99px;
+      background: #E2E8F0; overflow: hidden; margin-bottom: 4px;
+    }
+    .strength-fill {
+      height: 100%; border-radius: 99px;
+      width: 0; transition: all .3s;
+    }
+    .strength-label { font-size: 11px; color: #A0AEC0; }
+
+    .perfil-cards {
+      display: grid;
+      grid-template-columns: repeat(3,1fr);
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+    .perfil-card {
+      border: 2px solid #E2E8F0;
+      border-radius: 12px; padding: 14px 8px;
+      text-align: center; cursor: pointer;
+      transition: all .2s; background: #F7FAFC;
+    }
+    .perfil-card:hover { border-color: var(--teal); background: var(--teal-lt); }
+    .perfil-card.active { border-color: var(--teal); background: var(--teal-lt); }
+    .perfil-card i { display: block; font-size: 26px; margin-bottom: 8px; color: #A0AEC0; }
+    .perfil-card.active i { color: var(--teal-dark); }
+    .perfil-card .label { font-size: 12px; font-weight: 600; color: #718096; }
+    .perfil-card.active .label { color: var(--teal-dark); }
+    .perfil-card .sub { font-size: 10px; color: #A0AEC0; margin-top: 2px; }
+
+    .sucesso-wrap {
+      text-align: center; padding: 20px 0;
+    }
+    .sucesso-icon {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: var(--teal-lt);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 16px; font-size: 32px; color: var(--teal-dark);
+    }
+
+    @media (max-width: 480px) {
+      .cadastro-card { padding: 28px 20px; }
+      .step-line { width: 36px; }
+      .perfil-cards { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="login-wrapper">
+  <div class="cadastro-card">
+
+    <!-- Logo -->
+    <div style="text-align:center;margin-bottom:24px">
+      <div class="login-logo-wrap">
+        <i class="bi bi-heart-pulse-fill"></i>
+      </div>
+      <div class="login-title">Criar conta</div>
+      <div class="login-sub">Preencha os dados para acessar o sistema</div>
+    </div>
+
+    <!-- Barra de etapas -->
+    <div class="step-bar">
+      <div class="step">
+        <div class="step-circle active" id="sc1">1</div>
+        <div class="step-label active" id="sl1">Perfil</div>
+      </div>
+      <div class="step-line" id="line1"></div>
+      <div class="step">
+        <div class="step-circle" id="sc2">2</div>
+        <div class="step-label" id="sl2">Dados</div>
+      </div>
+      <div class="step-line" id="line2"></div>
+      <div class="step">
+        <div class="step-circle" id="sc3">3</div>
+        <div class="step-label" id="sl3">Senha</div>
+      </div>
+    </div>
+
+    <!-- ETAPA 1 — Perfil -->
+    <div class="step-content active" id="step1">
+      <div style="font-size:13px;font-weight:600;color:#4A5568;margin-bottom:12px">Selecione seu perfil de acesso:</div>
+      <div class="perfil-cards">
+        <div class="perfil-card active" data-perfil="psicologo" onclick="selecionarPerfil(this)">
+          <i class="bi bi-person-heart"></i>
+          <div class="label">Psicólogo</div>
+          <div class="sub">CRP obrigatório</div>
+        </div>
+        <div class="perfil-card" data-perfil="administrador" onclick="selecionarPerfil(this)">
+          <i class="bi bi-building"></i>
+          <div class="label">Administrador</div>
+          <div class="sub">Gestão da clínica</div>
+        </div>
+        <div class="perfil-card" data-perfil="paciente" onclick="selecionarPerfil(this)">
+          <i class="bi bi-person"></i>
+          <div class="label">Paciente</div>
+          <div class="sub">Área do paciente</div>
+        </div>
+      </div>
+      <div id="crpWrap" style="margin-top:14px">
+        <label class="form-label-custom">Número do CRP *</label>
+        <div class="input-icon-wrap">
+          <i class="bi bi-card-text"></i>
+          <input id="cadCrp" class="form-control-custom" placeholder="Ex: 03/1234"/>
+        </div>
+      </div>
+      <button class="btn-login" style="margin-top:20px" onclick="irStep(2)">
+        Continuar <i class="bi bi-arrow-right"></i>
+      </button>
+    </div>
+
+    <!-- ETAPA 2 — Dados pessoais -->
+    <div class="step-content" id="step2">
+      <div class="form-group" style="margin-bottom:14px">
+        <label class="form-label-custom">Nome completo *</label>
+        <div class="input-icon-wrap">
+          <i class="bi bi-person"></i>
+          <input id="cadNome" class="form-control-custom" placeholder="Seu nome completo" required/>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label class="form-label-custom">E-mail *</label>
+        <div class="input-icon-wrap">
+          <i class="bi bi-envelope"></i>
+          <input id="cadEmail" type="email" class="form-control-custom" placeholder="seu@email.com" required/>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label class="form-label-custom">Telefone</label>
+        <div class="input-icon-wrap">
+          <i class="bi bi-telephone"></i>
+          <input id="cadTelefone" class="form-control-custom" placeholder="(71) 99999-9999"/>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:20px">
+        <label class="form-label-custom">Data de nascimento</label>
+        <div class="input-icon-wrap">
+          <i class="bi bi-calendar"></i>
+          <input id="cadNasc" type="date" class="form-control-custom"/>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn-login" style="background:#F7FAFC;color:#4A5568;box-shadow:none;border:1.5px solid #E2E8F0;flex:1" onclick="irStep(1)">
+          <i class="bi bi-arrow-left"></i> Voltar
+        </button>
+        <button class="btn-login" style="flex:2" onclick="irStep(3)">
+          Continuar <i class="bi bi-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- ETAPA 3 — Senha -->
+    <div class="step-content" id="step3">
+      <div class="form-group" style="margin-bottom:14px">
+        <label class="form-label-custom">Senha *</label>
+        <div class="input-icon-wrap">
+          <i class="bi bi-lock"></i>
+          <input id="cadSenha" type="password" class="form-control-custom"
+                 placeholder="Mínimo 6 caracteres" oninput="avaliarSenha(this.value)"/>
+        </div>
+        <div class="senha-strength">
+          <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+          <div class="strength-label" id="strengthLabel">Digite uma senha</div>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:20px">
+        <label class="form-label-custom">Confirmar senha *</label>
+        <div class="input-icon-wrap">
+          <i class="bi bi-lock-fill"></i>
+          <input id="cadSenha2" type="password" class="form-control-custom" placeholder="Repita a senha"/>
+        </div>
+      </div>
+
+      <div id="cadErro" class="login-error"></div>
+
+      <div style="display:flex;gap:10px">
+        <button class="btn-login" style="background:#F7FAFC;color:#4A5568;box-shadow:none;border:1.5px solid #E2E8F0;flex:1" onclick="irStep(2)">
+          <i class="bi bi-arrow-left"></i> Voltar
+        </button>
+        <button class="btn-login" style="flex:2" onclick="cadastrar()">
+          <i class="bi bi-person-check"></i> Criar conta
+        </button>
+      </div>
+    </div>
+
+    <!-- ETAPA 4 — Sucesso -->
+    <div class="step-content" id="step4">
+      <div class="sucesso-wrap">
+        <div class="sucesso-icon"><i class="bi bi-check-lg"></i></div>
+        <div style="font-size:20px;font-weight:700;color:#0D1B2A;margin-bottom:8px">Conta criada!</div>
+        <div style="font-size:14px;color:#718096;margin-bottom:24px">
+          Bem-vindo(a) ao PsicoManager.<br/>Você já pode acessar o sistema.
+        </div>
+        <div id="sucResumo" style="background:#F7FAFC;border-radius:12px;padding:14px;margin-bottom:20px;text-align:left;font-size:13px;color:#4A5568"></div>
+        <button class="btn-login" onclick="window.location.href='login.html'">
+          <i class="bi bi-box-arrow-in-right"></i> Ir para o login
+        </button>
+      </div>
+    </div>
+
+    <!-- Rodapé -->
+    <div style="text-align:center;margin-top:20px;font-size:13px;color:#718096" id="rodapeLink">
+      Já tem uma conta? <a href="login.html" style="color:var(--teal);font-weight:600;text-decoration:none">Entrar</a>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+const API_URL = window.location.hostname === 'localhost'
+  ? 'http://localhost:3033/api'
+  : window.location.origin + '/api';
+
+let perfilSelecionado = 'psicologo';
+let stepAtual = 1;
+
+function selecionarPerfil(el) {
+  document.querySelectorAll('.perfil-card').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  perfilSelecionado = el.dataset.perfil;
+  document.getElementById('crpWrap').style.display =
+    perfilSelecionado === 'psicologo' ? 'block' : 'none';
+}
+
+function irStep(n) {
+  // Validações
+  if (n === 2) {
+    if (perfilSelecionado === 'psicologo' && !document.getElementById('cadCrp').value.trim())
+      return alert('Informe o número do CRP.');
+  }
+  if (n === 3) {
+    if (!document.getElementById('cadNome').value.trim())  return alert('Informe o nome completo.');
+    if (!document.getElementById('cadEmail').value.trim()) return alert('Informe o e-mail.');
+  }
+
+  // Atualizar steps visualmente
+  document.querySelectorAll('.step-content').forEach(s => s.classList.remove('active'));
+  document.getElementById('step' + n).classList.add('active');
+
+  // Atualizar círculos
+  for (let i = 1; i <= 3; i++) {
+    const sc = document.getElementById('sc' + i);
+    const sl = document.getElementById('sl' + i);
+    sc.classList.remove('active','done');
+    sl.classList.remove('active');
+    if (i < n)      { sc.classList.add('done'); sc.innerHTML = '<i class="bi bi-check-lg" style="font-size:12px"></i>'; }
+    else if (i === n){ sc.classList.add('active'); sc.textContent = i; sl.classList.add('active'); }
+    else            { sc.textContent = i; }
+  }
+  // Linhas
+  for (let i = 1; i <= 2; i++) {
+    const l = document.getElementById('line' + i);
+    l.classList.toggle('done', n > i);
+  }
+
+  stepAtual = n;
+}
+
+function avaliarSenha(v) {
+  const fill  = document.getElementById('strengthFill');
+  const label = document.getElementById('strengthLabel');
+  let forca = 0;
+  if (v.length >= 6)  forca++;
+  if (v.length >= 10) forca++;
+  if (/[A-Z]/.test(v)) forca++;
+  if (/[0-9]/.test(v)) forca++;
+  if (/[^A-Za-z0-9]/.test(v)) forca++;
+
+  const configs = [
+    { pct:'0%',   bg:'transparent', txt:'Digite uma senha' },
+    { pct:'25%',  bg:'#E17055',     txt:'Fraca' },
+    { pct:'50%',  bg:'#FDCB6E',     txt:'Razoável' },
+    { pct:'75%',  bg:'#0984E3',     txt:'Boa' },
+    { pct:'100%', bg:'#00B87C',     txt:'Excelente' },
+  ];
+  const c = configs[Math.min(forca, 4)];
+  fill.style.width      = c.pct;
+  fill.style.background = c.bg;
+  label.textContent     = c.txt;
+  label.style.color     = c.bg || '#A0AEC0';
+}
+
+async function cadastrar() {
+  const nome   = document.getElementById('cadNome').value.trim();
+  const email  = document.getElementById('cadEmail').value.trim();
+  const senha  = document.getElementById('cadSenha').value;
+  const senha2 = document.getElementById('cadSenha2').value;
+  const crp    = document.getElementById('cadCrp')?.value.trim();
+  const erro   = document.getElementById('cadErro');
+
+  erro.style.display = 'none';
+
+  if (!senha || senha.length < 6) {
+    erro.textContent = 'A senha deve ter no mínimo 6 caracteres.';
+    erro.style.display = 'block'; return;
+  }
+  if (senha !== senha2) {
+    erro.textContent = 'As senhas não coincidem.';
+    erro.style.display = 'block'; return;
+  }
+
+  try {
+    const r = await fetch(API_URL + '/auth/cadastrar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json',
+                 'Authorization': 'Bearer ' + localStorage.getItem('pm_token') },
+      body: JSON.stringify({ nome, email, senha, perfil: perfilSelecionado, crp })
+    });
+    const data = await r.json();
+
+    if (!r.ok) {
+      // Se não tem token de admin, tenta rota pública de auto-cadastro
+      if (r.status === 401 || r.status === 403) {
+        // Tentar criar diretamente
+        const r2 = await fetch(API_URL + '/auth/registrar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome, email, senha, perfil: perfilSelecionado, crp })
+        });
+        const d2 = await r2.json();
+        if (!r2.ok) throw new Error(d2.erro || 'Erro ao criar conta.');
+      } else {
+        throw new Error(data.erro || 'Erro ao criar conta.');
+      }
+    }
+
+    // Sucesso
+    document.querySelectorAll('.step-content').forEach(s => s.classList.remove('active'));
+    document.getElementById('step4').classList.add('active');
+    document.getElementById('rodapeLink').style.display = 'none';
+    document.getElementById('stepBar')?.remove();
+
+    const perfis = { psicologo:'Psicólogo', administrador:'Administrador', paciente:'Paciente' };
+    document.getElementById('sucResumo').innerHTML = `
+      <div style="margin-bottom:6px"><strong>Nome:</strong> ${nome}</div>
+      <div style="margin-bottom:6px"><strong>E-mail:</strong> ${email}</div>
+      <div style="margin-bottom:6px"><strong>Perfil:</strong> ${perfis[perfilSelecionado]}</div>
+      ${crp ? `<div><strong>CRP:</strong> ${crp}</div>` : ''}
+    `;
+  } catch(e) {
+    erro.textContent = e.message;
+    erro.style.display = 'block';
+  }
+}
+</script>
+</body>
+</html>

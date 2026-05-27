@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PsicoManager — Pacientes</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div id="toastContainer" class="pm-toast-container"></div>
+<div class="pm-sidebar">
+  <div class="pm-logo"><div class="d-flex align-items-center gap-2"><div style="width:30px;height:30px;background:#1D9E75;border-radius:7px;display:flex;align-items:center;justify-content:center"><i class="bi bi-heart-pulse-fill text-white" style="font-size:15px"></i></div><div><div class="pm-logo-title">PsicoManager</div><div class="pm-logo-sub">v1.0</div></div></div></div>
+  <nav class="pm-nav">
+    <div class="pm-nav-section">Principal</div>
+    <a href="dashboard.html" class="pm-nav-link"><i class="bi bi-grid-1x2"></i>Dashboard</a>
+    <a href="agenda.html" class="pm-nav-link"><i class="bi bi-calendar3"></i>Agenda</a>
+    <a href="pacientes.html" class="pm-nav-link active"><i class="bi bi-people"></i>Pacientes</a>
+    <a href="prontuarios.html" class="pm-nav-link"><i class="bi bi-journal-medical"></i>Prontuários</a>
+    <div class="pm-nav-section">Gestão</div>
+    <a href="financeiro.html" class="pm-nav-link"><i class="bi bi-cash-stack"></i>Financeiro</a>
+    <a href="relatorios.html" class="pm-nav-link"><i class="bi bi-bar-chart-line"></i>Relatórios</a>
+    <a href="tarefas.html" class="pm-nav-link"><i class="bi bi-check2-square"></i>Tarefas</a>
+  </nav>
+  <div class="pm-sidebar-footer"><div class="pm-user"><div class="pm-avatar" id="sidebarAvatar">--</div><div><div class="pm-user-name" id="sidebarNome">...</div><div class="pm-user-role" id="sidebarRole"></div></div></div><button class="btn btn-sm btn-outline-secondary mt-2 w-100" onclick="PM.logout()" style="font-size:12px"><i class="bi bi-box-arrow-right me-1"></i>Sair</button></div>
+</div>
+<div class="pm-main">
+  <div class="pm-topbar">
+    <span class="pm-topbar-title">Pacientes</span>
+    <button class="btn btn-pm btn-sm" data-bs-toggle="modal" data-bs-target="#modalNovoPaciente"><i class="bi bi-plus-lg me-1"></i>Novo paciente</button>
+  </div>
+  <div class="pm-content">
+    <div class="pm-card">
+      <div class="pm-card-title">
+        <span>Lista de pacientes</span>
+        <div class="d-flex gap-2">
+          <input type="text" id="campoBusca" class="form-control form-control-sm" placeholder="Buscar..." style="width:180px" oninput="filtrar()">
+          <select id="filtroStatus" class="form-select form-select-sm" style="width:140px" onchange="filtrar()">
+            <option value="">Todos os status</option>
+            <option value="ativo">Ativo</option>
+            <option value="inativo">Inativo</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table pm-table mb-0">
+          <thead><tr><th>Paciente</th><th>Contato</th><th>Plano</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody id="tbPacientes"><tr><td colspan="5" class="text-center py-4 text-muted">Carregando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal novo paciente -->
+<div class="modal fade" id="modalNovoPaciente" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Cadastrar novo paciente</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6"><label class="form-label">Nome completo *</label><input type="text" id="pNome" class="form-control" placeholder="Nome completo"></div>
+          <div class="col-md-6"><label class="form-label">E-mail *</label><input type="email" id="pEmail" class="form-control" placeholder="email@exemplo.com"></div>
+          <div class="col-md-4"><label class="form-label">CPF</label><input type="text" id="pCpf" class="form-control" placeholder="000.000.000-00"></div>
+          <div class="col-md-4"><label class="form-label">Data de nascimento</label><input type="date" id="pNasc" class="form-control"></div>
+          <div class="col-md-4"><label class="form-label">Telefone</label><input type="text" id="pTel" class="form-control" placeholder="(71) 99999-9999"></div>
+          <div class="col-md-8"><label class="form-label">Endereço</label><input type="text" id="pEnd" class="form-control" placeholder="Rua, número, bairro, cidade"></div>
+          <div class="col-md-4"><label class="form-label">Plano</label>
+            <select id="pPlano" class="form-select">
+              <option value="mensal">Particular mensal</option>
+              <option value="pacote_5">Pacote 5 sessões</option>
+              <option value="pacote_10">Pacote 10 sessões</option>
+              <option value="convenio">Convênio</option>
+            </select>
+          </div>
+          <div class="col-md-4"><label class="form-label">Valor por sessão (R$)</label><input type="number" id="pValor" class="form-control" value="180.00" step="0.01"></div>
+          <div class="col-md-8"><label class="form-label">Contato de emergência</label><input type="text" id="pEmerg" class="form-control" placeholder="Nome — Telefone"></div>
+          <div class="col-12"><label class="form-label">Senha de acesso (padrão: 123456)</label><input type="password" id="pSenha" class="form-control" placeholder="Senha inicial do paciente" value="123456"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-pm" id="btnSalvarPaciente" onclick="salvarPaciente()"><i class="bi bi-person-plus me-1"></i>Cadastrar paciente</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../js/api.js"></script>
+<script>
+PM.verificarAuth(); PM.iniciarSidebar();
+const PLANOS = {mensal:'Mensal',pacote_5:'Pacote 5x',pacote_10:'Pacote 10x',convenio:'Convênio'};
+const PLANO_CORES = {mensal:'bg-primary',pacote_5:'bg-info',pacote_10:'bg-success',convenio:'bg-warning text-dark'};
+let todosPacientes = [];
+
+async function carregarPacientes() {
+  try {
+    todosPacientes = await PM.apiFetch('/pacientes');
+    renderizarTabela(todosPacientes);
+  } catch (e) {
+    document.getElementById('tbPacientes').innerHTML = '<tr><td colspan="5" class="text-center text-danger py-4">Erro ao carregar pacientes</td></tr>';
+  }
+}
+
+function renderizarTabela(lista) {
+  const tb = document.getElementById('tbPacientes');
+  if (!lista.length) { tb.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Nenhum paciente encontrado</td></tr>'; return; }
+  tb.innerHTML = lista.map(p => {
+    const iniciais = (p.usuario?.nome || '?').split(' ').map(n => n[0]).slice(0,2).join('').toUpperCase();
+    const nome = p.usuario?.nome || '—';
+    const email = p.usuario?.email || '—';
+    return `<tr>
+      <td><div class="d-flex align-items-center gap-2">
+        <div style="width:32px;height:32px;border-radius:50%;background:#EEEDFE;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#534AB7;flex-shrink:0">${iniciais}</div>
+        <div><div style="font-weight:500">${nome}</div><div style="font-size:11px;color:#6c757d">${email}</div></div>
+      </div></td>
+      <td style="font-size:13px;color:#6c757d">${p.telefone || '—'}</td>
+      <td><span class="badge ${PLANO_CORES[p.plano] || 'bg-secondary'}">${PLANOS[p.plano] || p.plano}</span></td>
+      <td><span class="badge badge-${p.status}">${p.status}</span></td>
+      <td>
+        <a href="prontuarios.html?paciente=${p.id}" class="btn btn-sm btn-outline-secondary me-1" title="Ver prontuário"><i class="bi bi-journal-medical"></i></a>
+        <a href="agenda.html?paciente=${p.id}" class="btn btn-sm btn-outline-secondary" title="Agendar sessão"><i class="bi bi-calendar-plus"></i></a>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function filtrar() {
+  const busca = document.getElementById('campoBusca').value.toLowerCase();
+  const status = document.getElementById('filtroStatus').value;
+  const filtrado = todosPacientes.filter(p => {
+    const nome = (p.usuario?.nome || '').toLowerCase();
+    const email = (p.usuario?.email || '').toLowerCase();
+    const ok = !busca || nome.includes(busca) || email.includes(busca);
+    const okStatus = !status || p.status === status;
+    return ok && okStatus;
+  });
+  renderizarTabela(filtrado);
+}
+
+async function salvarPaciente() {
+  const btn = document.getElementById('btnSalvarPaciente');
+  const dados = {
+    nome: document.getElementById('pNome').value.trim(),
+    email: document.getElementById('pEmail').value.trim(),
+    senha: document.getElementById('pSenha').value || '123456',
+    cpf: document.getElementById('pCpf').value,
+    data_nascimento: document.getElementById('pNasc').value,
+    telefone: document.getElementById('pTel').value,
+    endereco: document.getElementById('pEnd').value,
+    plano: document.getElementById('pPlano').value,
+    valor_sessao: document.getElementById('pValor').value,
+    contato_emergencia: document.getElementById('pEmerg').value
+  };
+  if (!dados.nome || !dados.email) { PM.toast('Nome e e-mail são obrigatórios', 'danger'); return; }
+  btn.disabled = true; btn.innerHTML = '<span class="pm-loader me-2"></span>Salvando...';
+  try {
+    await PM.apiFetch('/pacientes', { method: 'POST', body: dados });
+    PM.toast('Paciente cadastrado com sucesso!');
+    bootstrap.Modal.getInstance(document.getElementById('modalNovoPaciente')).hide();
+    carregarPacientes();
+  } catch (e) {
+    PM.toast(e.message, 'danger');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="bi bi-person-plus me-1"></i>Cadastrar paciente';
+  }
+}
+
+carregarPacientes();
+</script>
+</body></html>

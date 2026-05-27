@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PsicoManager — Agenda</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div id="toastContainer" class="pm-toast-container"></div>
+<div class="pm-sidebar">
+  <div class="pm-logo"><div class="d-flex align-items-center gap-2"><div style="width:30px;height:30px;background:#1D9E75;border-radius:7px;display:flex;align-items:center;justify-content:center"><i class="bi bi-heart-pulse-fill text-white" style="font-size:15px"></i></div><div><div class="pm-logo-title">PsicoManager</div></div></div></div>
+  <nav class="pm-nav">
+    <div class="pm-nav-section">Principal</div>
+    <a href="dashboard.html" class="pm-nav-link"><i class="bi bi-grid-1x2"></i>Dashboard</a>
+    <a href="agenda.html" class="pm-nav-link active"><i class="bi bi-calendar3"></i>Agenda</a>
+    <a href="pacientes.html" class="pm-nav-link"><i class="bi bi-people"></i>Pacientes</a>
+    <a href="prontuarios.html" class="pm-nav-link"><i class="bi bi-journal-medical"></i>Prontuários</a>
+    <div class="pm-nav-section">Gestão</div>
+    <a href="financeiro.html" class="pm-nav-link"><i class="bi bi-cash-stack"></i>Financeiro</a>
+    <a href="relatorios.html" class="pm-nav-link"><i class="bi bi-bar-chart-line"></i>Relatórios</a>
+    <a href="tarefas.html" class="pm-nav-link"><i class="bi bi-check2-square"></i>Tarefas</a>
+  </nav>
+  <div class="pm-sidebar-footer"><div class="pm-user"><div class="pm-avatar" id="sidebarAvatar">--</div><div><div class="pm-user-name" id="sidebarNome">...</div><div class="pm-user-role" id="sidebarRole"></div></div></div><button class="btn btn-sm btn-outline-secondary mt-2 w-100" onclick="PM.logout()" style="font-size:12px"><i class="bi bi-box-arrow-right me-1"></i>Sair</button></div>
+</div>
+<div class="pm-main">
+  <div class="pm-topbar">
+    <div class="d-flex align-items-center gap-3">
+      <span class="pm-topbar-title">Agenda</span>
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-sm btn-outline-secondary" onclick="mudarMes(-1)"><i class="bi bi-chevron-left"></i></button>
+        <span id="mesAno" style="font-size:14px;font-weight:500;min-width:120px;text-align:center"></span>
+        <button class="btn btn-sm btn-outline-secondary" onclick="mudarMes(1)"><i class="bi bi-chevron-right"></i></button>
+      </div>
+    </div>
+    <button class="btn btn-pm btn-sm" data-bs-toggle="modal" data-bs-target="#modalAgendar"><i class="bi bi-plus-lg me-1"></i>Agendar sessão</button>
+  </div>
+  <div class="pm-content">
+    <div class="pm-card">
+      <div class="pm-card-title">
+        <span>Calendário</span>
+        <div class="d-flex gap-3" style="font-size:12px">
+          <span><span class="pm-event confirmada me-1" style="display:inline-block;width:10px;height:10px;border-radius:2px"></span>Confirmada</span>
+          <span><span class="pm-event agendada me-1" style="display:inline-block;width:10px;height:10px;border-radius:2px"></span>Agendada</span>
+          <span><span class="pm-event cancelada me-1" style="display:inline-block;width:10px;height:10px;border-radius:2px"></span>Cancelada</span>
+        </div>
+      </div>
+      <div class="pm-cal-header mb-1">
+        <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
+      </div>
+      <div class="pm-cal-grid" id="calendarioGrid"></div>
+    </div>
+
+    <div class="pm-card">
+      <div class="pm-card-title">Sessões do mês</div>
+      <div class="table-responsive">
+        <table class="table pm-table mb-0">
+          <thead><tr><th>Data/Hora</th><th>Paciente</th><th>Psicólogo</th><th>Modalidade</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody id="tbSessoes"><tr><td colspan="6" class="text-center py-3 text-muted">Carregando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal agendar -->
+<div class="modal fade" id="modalAgendar" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Novo agendamento</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="mb-3"><label class="form-label">Paciente *</label><select id="sPaciente" class="form-select"><option value="">Selecione...</option></select></div>
+        <div class="row g-3">
+          <div class="col-md-6"><label class="form-label">Data *</label><input type="date" id="sData" class="form-control"></div>
+          <div class="col-md-6"><label class="form-label">Horário *</label><input type="time" id="sHora" class="form-control" value="09:00"></div>
+        </div>
+        <div class="mb-3 mt-3"><label class="form-label">Modalidade</label>
+          <select id="sModal" class="form-select">
+            <option value="presencial">Presencial</option>
+            <option value="online">Online</option>
+            <option value="grupo">Grupo</option>
+          </select>
+        </div>
+        <div class="mb-3"><label class="form-label">Observações</label><textarea id="sObs" class="form-control" rows="2" placeholder="Observações sobre a sessão..."></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-pm" id="btnAgendar" onclick="salvarSessao()"><i class="bi bi-calendar-check me-1"></i>Confirmar agendamento</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../js/api.js"></script>
+<script>
+PM.verificarAuth(); PM.iniciarSidebar();
+const MESES_NOME = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+let dataAtual = new Date();
+let sessoesCache = [];
+
+function mudarMes(delta) { dataAtual = new Date(dataAtual.getFullYear(), dataAtual.getMonth() + delta, 1); carregarSessoes(); }
+
+function renderizarCalendario(sessoes) {
+  const ano = dataAtual.getFullYear(), mes = dataAtual.getMonth();
+  document.getElementById('mesAno').textContent = MESES_NOME[mes] + ' ' + ano;
+  const primeiroDia = new Date(ano, mes, 1).getDay();
+  const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+  const hoje = new Date();
+  const grid = document.getElementById('calendarioGrid');
+  grid.innerHTML = '';
+  // Dias anteriores
+  for (let i = 0; i < primeiroDia; i++) {
+    const d = new Date(ano, mes, -primeiroDia + i + 1);
+    grid.innerHTML += `<div class="pm-cal-day other-month"><div class="pm-day-num">${d.getDate()}</div></div>`;
+  }
+  // Dias do mês
+  for (let d = 1; d <= diasNoMes; d++) {
+    const isHoje = hoje.getFullYear() === ano && hoje.getMonth() === mes && hoje.getDate() === d;
+    const dayStr = `${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const sessoesNoDia = sessoes.filter(s => s.data_hora_inicio.startsWith(dayStr));
+    const numEl = isHoje ? `<div class="pm-day-num" style="display:inline-flex;width:22px;height:22px;border-radius:50%;background:#1D9E75;color:#fff;align-items:center;justify-content:center;font-size:11px">${d}</div>` : `<div class="pm-day-num">${d}</div>`;
+    const eventos = sessoesNoDia.map(s => {
+      const h = new Date(s.data_hora_inicio).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      const n = s.paciente?.usuario?.nome?.split(' ')[0] || '?';
+      return `<div class="pm-event ${s.status}" title="${s.paciente?.usuario?.nome}">${h} ${n}</div>`;
+    }).join('');
+    grid.innerHTML += `<div class="pm-cal-day${isHoje?' today':''}">${numEl}${eventos}</div>`;
+  }
+}
+
+async function carregarSessoes() {
+  const mes = dataAtual.getMonth() + 1;
+  const ano = dataAtual.getFullYear();
+  try {
+    sessoesCache = await PM.apiFetch(`/sessoes?mes=${mes}&ano=${ano}`);
+    renderizarCalendario(sessoesCache);
+    renderizarTabela(sessoesCache);
+  } catch (e) { PM.toast('Erro ao carregar agenda', 'danger'); }
+}
+
+function renderizarTabela(sessoes) {
+  const tb = document.getElementById('tbSessoes');
+  if (!sessoes.length) { tb.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">Nenhuma sessão neste período</td></tr>'; return; }
+  tb.innerHTML = sessoes.map(s => {
+    const dt = new Date(s.data_hora_inicio);
+    const dataHora = dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    return `<tr>
+      <td><strong>${dataHora}</strong></td>
+      <td>${s.paciente?.usuario?.nome || '—'}</td>
+      <td>${s.psicologo?.nome || '—'}</td>
+      <td>${s.modalidade}</td>
+      <td><span class="badge badge-${s.status}">${s.status}</span></td>
+      <td>
+        <select class="form-select form-select-sm d-inline-block" style="width:130px" onchange="atualizarStatus(${s.id},this.value)">
+          ${['agendada','confirmada','cancelada','realizada'].map(st => `<option value="${st}"${s.status===st?' selected':''}>${st}</option>`).join('')}
+        </select>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function atualizarStatus(id, status) {
+  try {
+    await PM.apiFetch(`/sessoes/${id}/status`, { method: 'PATCH', body: { status } });
+    PM.toast('Status atualizado!');
+    carregarSessoes();
+  } catch (e) { PM.toast(e.message, 'danger'); }
+}
+
+async function carregarPacientesSelect() {
+  try {
+    const pacientes = await PM.apiFetch('/pacientes');
+    const sel = document.getElementById('sPaciente');
+    pacientes.forEach(p => { sel.innerHTML += `<option value="${p.id}">${p.usuario?.nome}</option>`; });
+  } catch (e) {}
+}
+
+async function salvarSessao() {
+  const btn = document.getElementById('btnAgendar');
+  const usuario = PM.getUsuario();
+  const data = document.getElementById('sData').value;
+  const hora = document.getElementById('sHora').value;
+  if (!document.getElementById('sPaciente').value || !data || !hora) { PM.toast('Preencha paciente, data e horário', 'danger'); return; }
+  const dataHora = new Date(`${data}T${hora}:00`);
+  const dataHoraFim = new Date(dataHora.getTime() + 60 * 60 * 1000);
+  btn.disabled = true; btn.innerHTML = '<span class="pm-loader me-2"></span>Agendando...';
+  try {
+    await PM.apiFetch('/sessoes', { method: 'POST', body: {
+      paciente_id: document.getElementById('sPaciente').value,
+      psicologo_id: usuario.id,
+      data_hora_inicio: dataHora.toISOString(),
+      data_hora_fim: dataHoraFim.toISOString(),
+      modalidade: document.getElementById('sModal').value,
+      observacoes: document.getElementById('sObs').value
+    }});
+    PM.toast('Sessão agendada com sucesso!');
+    bootstrap.Modal.getInstance(document.getElementById('modalAgendar')).hide();
+    carregarSessoes();
+  } catch (e) { PM.toast(e.message, 'danger'); }
+  finally { btn.disabled = false; btn.innerHTML = '<i class="bi bi-calendar-check me-1"></i>Confirmar agendamento'; }
+}
+
+// Data mínima = hoje
+document.getElementById('sData').min = new Date().toISOString().split('T')[0];
+carregarSessoes();
+carregarPacientesSelect();
+</script>
+</body></html>

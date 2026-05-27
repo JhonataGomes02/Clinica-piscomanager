@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PsicoManager — Dashboard</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div id="toastContainer" class="pm-toast-container"></div>
+
+<!-- Sidebar -->
+<div class="pm-sidebar">
+  <div class="pm-logo">
+    <div class="d-flex align-items-center gap-2">
+      <div style="width:30px;height:30px;background:#1D9E75;border-radius:7px;display:flex;align-items:center;justify-content:center">
+        <i class="bi bi-heart-pulse-fill text-white" style="font-size:15px"></i>
+      </div>
+      <div><div class="pm-logo-title">PsicoManager</div><div class="pm-logo-sub">v1.0</div></div>
+    </div>
+  </div>
+  <nav class="pm-nav">
+    <div class="pm-nav-section">Principal</div>
+    <a href="dashboard.html" class="pm-nav-link active"><i class="bi bi-grid-1x2"></i>Dashboard</a>
+    <a href="agenda.html" class="pm-nav-link"><i class="bi bi-calendar3"></i>Agenda</a>
+    <a href="pacientes.html" class="pm-nav-link"><i class="bi bi-people"></i>Pacientes</a>
+    <a href="prontuarios.html" class="pm-nav-link"><i class="bi bi-journal-medical"></i>Prontuários</a>
+    <div class="pm-nav-section">Gestão</div>
+    <a href="financeiro.html" class="pm-nav-link"><i class="bi bi-cash-stack"></i>Financeiro</a>
+    <a href="relatorios.html" class="pm-nav-link"><i class="bi bi-bar-chart-line"></i>Relatórios</a>
+    <a href="tarefas.html" class="pm-nav-link"><i class="bi bi-check2-square"></i>Tarefas</a>
+  </nav>
+  <div class="pm-sidebar-footer">
+    <div class="pm-user">
+      <div class="pm-avatar" id="sidebarAvatar">--</div>
+      <div>
+        <div class="pm-user-name" id="sidebarNome">...</div>
+        <div class="pm-user-role" id="sidebarRole"></div>
+      </div>
+    </div>
+    <button class="btn btn-sm btn-outline-secondary mt-2 w-100" onclick="PM.logout()" style="font-size:12px">
+      <i class="bi bi-box-arrow-right me-1"></i>Sair
+    </button>
+  </div>
+</div>
+
+<div class="pm-main">
+  <div class="pm-topbar">
+    <span class="pm-topbar-title">Dashboard</span>
+    <a href="agenda.html" class="btn btn-pm btn-sm"><i class="bi bi-plus-lg me-1"></i>Novo agendamento</a>
+  </div>
+  <div class="pm-content">
+    <!-- Métricas -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-3"><div class="pm-metric"><div class="pm-metric-label">Sessões hoje</div><div class="pm-metric-value" id="metSessoesHoje">—</div><div class="pm-metric-delta">carregando...</div></div></div>
+      <div class="col-md-3"><div class="pm-metric"><div class="pm-metric-label">Pacientes ativos</div><div class="pm-metric-value" id="metPacientes">—</div></div></div>
+      <div class="col-md-3"><div class="pm-metric"><div class="pm-metric-label">Receita do mês</div><div class="pm-metric-value" id="metReceita">—</div></div></div>
+      <div class="col-md-3"><div class="pm-metric"><div class="pm-metric-label">Taxa de presença</div><div class="pm-metric-value" id="metPresenca">—</div><div class="pm-metric-delta">Meta: 85%</div></div></div>
+    </div>
+
+    <div class="row g-4">
+      <!-- Gráfico de receita -->
+      <div class="col-lg-7">
+        <div class="pm-card">
+          <div class="pm-card-title">Receita vs Despesas — últimos 6 meses</div>
+          <canvas id="graficoReceita" height="220"></canvas>
+          <div class="d-flex gap-3 mt-2" style="font-size:12px;color:#6c757d">
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#1D9E75;margin-right:4px"></span>Receitas</span>
+            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#D85A30;margin-right:4px"></span>Despesas</span>
+          </div>
+        </div>
+      </div>
+      <!-- Status sessões -->
+      <div class="col-lg-5">
+        <div class="pm-card">
+          <div class="pm-card-title">Sessões por status — mês atual</div>
+          <canvas id="graficoStatus" height="200"></canvas>
+          <div id="legendaStatus" class="d-flex flex-wrap gap-2 mt-2" style="font-size:12px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sessões de hoje -->
+    <div class="pm-card mt-2">
+      <div class="pm-card-title">
+        <span>Sessões de hoje</span>
+        <a href="agenda.html" class="btn btn-sm btn-outline-secondary" style="font-size:12px">Ver agenda completa</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table pm-table mb-0">
+          <thead><tr><th>Horário</th><th>Paciente</th><th>Modalidade</th><th>Status</th><th>Sala</th></tr></thead>
+          <tbody id="tbSessoesHoje"><tr><td colspan="5" class="text-center text-muted py-4">Carregando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="../js/api.js"></script>
+<script>
+PM.verificarAuth();
+PM.iniciarSidebar();
+
+const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const STATUS_LABELS = { confirmada:'Confirmada', agendada:'Agendada', cancelada:'Cancelada', realizada:'Realizada' };
+const STATUS_CORES = { confirmada:'#1D9E75', agendada:'#BA7517', cancelada:'#D85A30', realizada:'#185FA5' };
+
+async function carregarDashboard() {
+  try {
+    const dados = await PM.apiFetch('/relatorios/dashboard');
+    document.getElementById('metSessoesHoje').textContent = dados.sessoesHoje;
+    document.getElementById('metPacientes').textContent = dados.pacientesAtivos;
+    document.getElementById('metReceita').textContent = 'R$ ' + dados.receitaMes.toLocaleString('pt-BR', {minimumFractionDigits:2});
+    document.getElementById('metPresenca').textContent = dados.taxaPresenca + '%';
+
+    // Gráfico status
+    const sc = dados.statusCount;
+    const statusLabels = Object.keys(sc).map(k => STATUS_LABELS[k] || k);
+    const statusData = Object.values(sc);
+    const statusCores = Object.keys(sc).map(k => STATUS_CORES[k] || '#aaa');
+    new Chart(document.getElementById('graficoStatus'), {
+      type: 'doughnut',
+      data: { labels: statusLabels, datasets: [{ data: statusData, backgroundColor: statusCores, borderWidth: 0 }] },
+      options: { responsive: true, cutout: '65%', plugins: { legend: { display: false } } }
+    });
+    const legenda = document.getElementById('legendaStatus');
+    Object.keys(sc).forEach(k => {
+      legenda.innerHTML += `<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:${STATUS_CORES[k]}"></span>${STATUS_LABELS[k]}: ${sc[k]}</span>`;
+    });
+  } catch (e) {
+    console.error(e);
+    PM.toast('Erro ao carregar dados do dashboard', 'danger');
+  }
+}
+
+async function carregarGraficoFinanceiro() {
+  try {
+    const dados = await PM.apiFetch('/financeiro/resumo');
+    const labels = dados.grafico.map(d => d.mes);
+    const receitas = dados.grafico.map(d => d.receitas);
+    const despesas = dados.grafico.map(d => d.despesas);
+    new Chart(document.getElementById('graficoReceita'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Receitas', data: receitas, backgroundColor: '#1D9E75', borderRadius: 4 },
+          { label: 'Despesas', data: despesas, backgroundColor: '#D85A30', borderRadius: 4 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false } },
+          y: { ticks: { callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k' }, grid: { color: '#f0f0f0' } }
+        }
+      }
+    });
+  } catch (e) { console.error(e); }
+}
+
+async function carregarSessoesHoje() {
+  const tb = document.getElementById('tbSessoesHoje');
+  try {
+    const sessoes = await PM.apiFetch('/sessoes/hoje');
+    if (!sessoes.length) { tb.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Nenhuma sessão agendada para hoje</td></tr>'; return; }
+    tb.innerHTML = sessoes.map(s => {
+      const hora = new Date(s.data_hora_inicio).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+      const nome = s.paciente?.usuario?.nome || '—';
+      const mod = {presencial:'Presencial',online:'Online',grupo:'Grupo'}[s.modalidade] || s.modalidade;
+      const sala = s.sala?.nome || (s.modalidade === 'online' ? 'Online' : '—');
+      return `<tr>
+        <td><strong>${hora}</strong></td>
+        <td>${nome}</td>
+        <td><span class="badge bg-secondary">${mod}</span></td>
+        <td><span class="badge badge-${s.status}">${s.status}</span></td>
+        <td>${sala}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    tb.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-4">Erro ao carregar sessões</td></tr>';
+  }
+}
+
+carregarDashboard();
+carregarGraficoFinanceiro();
+carregarSessoesHoje();
+</script>
+</body>
+</html>
