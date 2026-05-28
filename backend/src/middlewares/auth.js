@@ -1,26 +1,31 @@
 const jwt = require('jsonwebtoken');
-require('dotenv').config();
 
 function autenticar(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return res.status(401).json({ erro: 'Token não fornecido.' });
+  const header = req.headers['authorization'];
+  const queryToken = req.query.token;
+  const token = queryToken || (header ? header.split(' ')[1] : null);
+
+  if (!token) return res.status(401).json({ erro: 'Token não informado.' });
+
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET || 'psicomanager_secret');
-    req.usuario = payload;
+    const dados = jwt.verify(token, process.env.JWT_SECRET || 'psicomanager_secret');
+    req.usuario = dados;
     next();
-  } catch {
+  } catch (e) {
     return res.status(401).json({ erro: 'Token inválido ou expirado.' });
   }
 }
 
-function autorizar(...perfis) {
-  return (req, res, next) => {
-    if (!perfis.includes(req.usuario.perfil)) {
-      return res.status(403).json({ erro: 'Acesso negado para este perfil.' });
-    }
-    next();
-  };
+function apenasAdmin(req, res, next) {
+  if (req.usuario.perfil !== 'administrador')
+    return res.status(403).json({ erro: 'Acesso restrito ao administrador.' });
+  next();
 }
 
-module.exports = { autenticar, autorizar };
+function apenasPsicologo(req, res, next) {
+  if (!['psicologo', 'administrador'].includes(req.usuario.perfil))
+    return res.status(403).json({ erro: 'Acesso restrito ao psicólogo.' });
+  next();
+}
+
+module.exports = { autenticar, apenasAdmin, apenasPsicologo };
