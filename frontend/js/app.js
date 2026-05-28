@@ -617,12 +617,25 @@ async function documentos() {
 }
 
 async function gerarDocumento() {
-  const tipo     = document.getElementById('docTipo')?.value;
-  const paciente = document.getElementById('docPaciente')?.options[document.getElementById('docPaciente').selectedIndex]?.text;
-  const data     = document.getElementById('docData')?.value;
-  if (!paciente || !data) return alert('Preencha todos os campos.');
-  const tipos = { recibo:'Recibo de sessão', declaracao:'Declaração de comparecimento', laudo:'Laudo psicológico', relatorio:'Relatório clínico', contrato:'Contrato de serviços' };
-  alert(`📄 ${tipos[tipo] || tipo} gerado com sucesso!\nPaciente: ${paciente}\nData: ${data}\n\n(PDF seria gerado aqui com biblioteca como pdfkit)`);
+  const tipo       = document.getElementById('docTipo')?.value;
+  const pacienteEl = document.getElementById('docPaciente');
+  const pacienteId = pacienteEl?.value;
+
+  if (!pacienteId) return alert('Selecione um paciente.');
+
+  const token = localStorage.getItem('pm_token');
+  const base  = window.location.origin;
+
+  if (tipo === 'laudo') {
+    window.open(`${base}/api/documentos/laudo/${pacienteId}?token=${token}`, '_blank');
+    return;
+  }
+
+  const pagamentos = await api('GET', `/financeiro`) || [];
+  const pag = pagamentos.find(p => String(p.paciente_id) === String(pacienteId) && p.status === 'pago');
+  if (!pag) return alert('Nenhum pagamento encontrado para este paciente.\nCadastre um pagamento primeiro.');
+
+  window.open(`${base}/api/documentos/recibo/${pag.id}?token=${token}`, '_blank');
 }
 
 // ── ESPACOS ───────────────────────────────────────────────────
