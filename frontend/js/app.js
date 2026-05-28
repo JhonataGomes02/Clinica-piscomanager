@@ -609,34 +609,7 @@ async function enviarLembrete() {
 }
 
 // ── DOCUMENTOS ────────────────────────────────────────────────
-async function documentos() {
-  await carregarSelectPacientes('docPaciente');
-  const hoje = new Date().toISOString().split('T')[0];
-  const docData = document.getElementById('docData');
-  if (docData) docData.value = hoje;
-}
-
-async function gerarDocumento() {
-  const tipo       = document.getElementById('docTipo')?.value;
-  const pacienteEl = document.getElementById('docPaciente');
-  const pacienteId = pacienteEl?.value;
-
-  if (!pacienteId) return alert('Selecione um paciente.');
-
-  const token = localStorage.getItem('pm_token');
-  const base  = window.location.origin;
-
-  if (tipo === 'laudo') {
-    window.open(`${base}/api/documentos/laudo/${pacienteId}?token=${token}`, '_blank');
-    return;
-  }
-
-  const pagamentos = await api('GET', `/financeiro`) || [];
-  const pag = pagamentos.find(p => String(p.paciente_id) === String(pacienteId) && p.status === 'pago');
-  if (!pag) return alert('Nenhum pagamento encontrado para este paciente.\nCadastre um pagamento primeiro.');
-
-  window.open(`${base}/api/documentos/recibo/${pag.id}?token=${token}`, '_blank');
-}
+// (implementação com jsPDF — ver função gerarDocumento() mais abaixo)
 
 // ── ESPACOS ───────────────────────────────────────────────────
 async function espacos() { /* dados já estão no HTML estático */ }
@@ -731,7 +704,232 @@ async function enviarLembrete() {
   if (r) alert('✅ ' + r.mensagem);
 }
 
-// ── DOCUMENTOS — download real de PDF ─────────────────────────
+// ── DOCUMENTOS — geração 100% no browser com jsPDF ───────────
+// Não depende do servidor; funciona no Vercel sem Puppeteer/PDFKit.
+
+function _carregarJsPDF() {
+  return new Promise((resolve, reject) => {
+    if (window.jspdf) return resolve(window.jspdf.jsPDF);
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    script.onload  = () => resolve(window.jspdf.jsPDF);
+    script.onerror = () => reject(new Error('Falha ao carregar jsPDF'));
+    document.head.appendChild(script);
+  });
+}
+
+// Helpers de desenho ─────────────────────────────────────────
+function _pdfHeader(doc, titulo) {
+  // Barra de cabeçalho
+  doc.setFillColor(29, 158, 117);           // verde PsicoManager
+  doc.rect(0, 0, 210, 28, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(17);
+  doc.setFont('helvetica', 'bold');
+  doc.text('PsicoManager', 14, 12);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Sistema de Gestão Psicológica', 14, 19);
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.text(titulo, 210 - 14, 17, { align: 'right' });
+  doc.setTextColor(0, 0, 0);
+}
+
+function _pdfFooter(doc) {
+  const paginas = doc.getNumberOfPages();
+  for (let i = 1; i <= paginas; i++) {
+    doc.setPage(i);
+    doc.setDrawColor(200, 200, 200);
+    doc.line(14, 284, 196, 284);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(150, 150, 150);
+    doc.text('PsicoManager — Documento gerado em ' + new Date().toLocaleString('pt-BR'), 14, 290);
+    doc.text(`Página ${i} de ${paginas}`, 196, 290, { align: 'right' });
+    doc.setTextColor(0, 0, 0);
+  }
+}
+
+function _pdfLinha(doc, label, valor, x, y, largLabel = 50) {
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.text(label, x, y);
+  doc.setFont('helvetica', 'normal');
+  doc.text(String(valor || '—'), x + largLabel, y);
+}
+
+// Gerador de Recibo ──────────────────────────────────────────
+async function _gerarRecibo(doc, paciente, pagamento) {
+  _pdfHeader(doc, 'RECIBO DE PAGAMENTO');
+
+  // Número do recibo e data
+  const numRecibo = String(pagamento.id || 1).padStart(5, '0');
+  const dataEmissao = new Date().toLocaleDateString('pt-BR');
+
+  doc.setFillColor(245, 250, 248);
+  doc.roundedRect(14, 32, 182, 18, 3, 3, 'F');
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(29, 158, 117);
+  doc.text(`Nº ${numRecibo}`, 20, 43);
+  doc.setTextColor(80, 80, 80);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text(`Emitido em: ${dataEmissao}`, 196, 43, { align: 'right' });
+  doc.setTextColor(0, 0, 0);
+
+  // Seção: Paciente
+  let y = 62;
+  doc.setFillColor(29, 158, 117);
+  doc.rect(14, y - 5, 182, 7, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.text('DADOS DO PACIENTE', 17, y);
+  doc.setTextColor(0, 0, 0);
+
+  y += 10;
+  _pdfLinha(doc, 'Nome:', paciente.nome, 17, y);
+  y += 7;
+  _pdfLinha(doc, 'E-mail:', paciente.email, 17, y);
+  _pdfLinha(doc, 'Telefone:', paciente.telefone, 110, y);
+  y += 7;
+  _pdfLinha(doc, 'CPF:', paciente.cpf, 17, y);
+
+  // Seção: Pagamento
+  y += 14;
+  doc.setFillColor(29, 158, 117);
+  doc.rect(14, y - 5, 182, 7, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.text('DADOS DO PAGAMENTO', 17, y);
+  doc.setTextColor(0, 0, 0);
+
+  y += 10;
+  _pdfLinha(doc, 'Data do Pagamento:', fmtData(pagamento.data_pagamento), 17, y);
+  _pdfLinha(doc, 'Forma:', pagamento.forma_pagamento || '—', 110, y);
+  y += 7;
+  _pdfLinha(doc, 'Status:', (pagamento.status || '').toUpperCase(), 17, y);
+  y += 7;
+  if (pagamento.observacoes) _pdfLinha(doc, 'Observações:', pagamento.observacoes, 17, y);
+
+  // Destaque do valor
+  y += 16;
+  doc.setFillColor(29, 158, 117);
+  doc.roundedRect(14, y, 182, 22, 3, 3, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.text('VALOR TOTAL PAGO', 105, y + 8, { align: 'center' });
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(fmtMoeda(pagamento.valor), 105, y + 18, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+
+  // Assinatura
+  y += 40;
+  doc.setDrawColor(100, 100, 100);
+  doc.line(14, y + 15, 90, y + 15);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 100, 100);
+  doc.text('Assinatura do Responsável', 52, y + 21, { align: 'center' });
+
+  doc.line(120, y + 15, 196, y + 15);
+  doc.text('Assinatura do Paciente / Responsável', 158, y + 21, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+}
+
+// Gerador de Laudo ───────────────────────────────────────────
+async function _gerarLaudo(doc, paciente, prontuario) {
+  _pdfHeader(doc, 'LAUDO PSICOLÓGICO');
+
+  const dataEmissao = new Date().toLocaleDateString('pt-BR');
+
+  doc.setFillColor(245, 250, 248);
+  doc.roundedRect(14, 32, 182, 12, 3, 3, 'F');
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(80, 80, 80);
+  doc.text(`Documento confidencial — emitido em ${dataEmissao} · Uso exclusivo para fins clínicos`, 105, 40, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+
+  // Dados do paciente
+  let y = 56;
+  doc.setFillColor(29, 158, 117);
+  doc.rect(14, y - 5, 182, 7, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.text('IDENTIFICAÇÃO DO PACIENTE', 17, y);
+  doc.setTextColor(0, 0, 0);
+
+  y += 10;
+  _pdfLinha(doc, 'Nome:', paciente.nome, 17, y);
+  y += 7;
+  _pdfLinha(doc, 'Data de Nascimento:', paciente.data_nascimento ? fmtData(paciente.data_nascimento) : '—', 17, y);
+  _pdfLinha(doc, 'Profissão:', paciente.profissao || '—', 110, y);
+  y += 7;
+  _pdfLinha(doc, 'Psicólogo(a):', paciente.psicologo || USUARIO?.nome || '—', 17, y);
+
+  // Seções clínicas
+  const secoes = [
+    { titulo: 'QUEIXA PRINCIPAL',        campo: prontuario?.queixa_principal },
+    { titulo: 'HISTÓRICO FAMILIAR',      campo: prontuario?.historico_familiar },
+    { titulo: 'HISTÓRICO CLÍNICO',       campo: prontuario?.historico_clinico },
+    { titulo: 'MEDICAMENTOS EM USO',     campo: prontuario?.medicamentos },
+    { titulo: 'HIPÓTESE DIAGNÓSTICA',    campo: prontuario?.hipotese_diagnostica },
+  ];
+
+  for (const secao of secoes) {
+    y += 12;
+    // Quebra de página se necessário
+    if (y > 255) { doc.addPage(); _pdfHeader(doc, 'LAUDO PSICOLÓGICO'); y = 38; }
+
+    doc.setFillColor(29, 158, 117);
+    doc.rect(14, y - 5, 182, 7, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text(secao.titulo, 17, y);
+    doc.setTextColor(0, 0, 0);
+
+    y += 7;
+    if (!secao.campo) {
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(150, 150, 150);
+      doc.setFontSize(9);
+      doc.text('Não preenchido.', 17, y);
+      doc.setTextColor(0, 0, 0);
+      y += 4;
+    } else {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      const linhas = doc.splitTextToSize(secao.campo, 176);
+      for (const linha of linhas) {
+        if (y > 270) { doc.addPage(); _pdfHeader(doc, 'LAUDO PSICOLÓGICO'); y = 38; }
+        doc.text(linha, 17, y);
+        y += 5.5;
+      }
+    }
+  }
+
+  // Assinatura final
+  if (y > 255) { doc.addPage(); _pdfHeader(doc, 'LAUDO PSICOLÓGICO'); y = 38; }
+  y += 18;
+  doc.setDrawColor(100, 100, 100);
+  doc.line(50, y, 160, y);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 100, 100);
+  doc.text(paciente.psicologo || USUARIO?.nome || 'Psicólogo(a) Responsável', 105, y + 6, { align: 'center' });
+  doc.text('CRP: ___________________', 105, y + 12, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+}
+
+// Ponto de entrada principal ─────────────────────────────────
 async function documentos() {
   await carregarSelectPacientes('docPaciente');
   const hoje = new Date().toISOString().split('T')[0];
@@ -741,35 +939,57 @@ async function documentos() {
 
 async function gerarDocumento() {
   const tipo       = document.getElementById('docTipo')?.value;
-  const pacienteId = document.getElementById('docPaciente')?.value;
+  const pacienteEl = document.getElementById('docPaciente');
+  const pacienteId = pacienteEl?.value;
+  const nomePaciente = pacienteEl?.options[pacienteEl.selectedIndex]?.text || 'paciente';
+  const obs        = document.getElementById('docObs')?.value || '';
+  const dataRef    = document.getElementById('docData')?.value || new Date().toISOString().split('T')[0];
+
   if (!pacienteId) return alert('Selecione um paciente.');
 
-  let url = '';
-  if (tipo === 'laudo') {
-    url = `${API}/documentos/laudo/${pacienteId}`;
-  } else {
-    // Buscar último pagamento pago do paciente
-    const pagamentos = await api('GET', `/financeiro?status=pago`) || [];
-    const pag = pagamentos.find(p => String(p.paciente_id) === String(pacienteId));
-    if (!pag) return alert('Nenhum pagamento encontrado para este paciente.\nCadastre um pagamento primeiro.');
-    url = `${API}/documentos/recibo/${pag.id}`;
-  }
+  const btn = document.querySelector('[onclick="gerarDocumento()"]');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Gerando...'; }
 
-  // Baixar PDF com token de autenticação
   try {
-    const resp = await fetch(url, { headers: authHeader() });
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      return alert('Erro: ' + (err.erro || resp.statusText));
+    const jsPDF = await _carregarJsPDF();
+
+    // Buscar dados do paciente
+    const pacientes = await api('GET', '/pacientes') || [];
+    const paciente  = pacientes.find(p => String(p.id) === String(pacienteId)) || { nome: nomePaciente };
+
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    if (tipo === 'laudo') {
+      // Buscar prontuário
+      const prontuario = await api('GET', `/prontuarios/${pacienteId}`).catch(() => null);
+      await _gerarLaudo(doc, paciente, prontuario);
+      _pdfFooter(doc);
+      doc.save(`laudo_${(paciente.nome || 'paciente').replace(/\s+/g, '_')}_${dataRef}.pdf`);
+
+    } else {
+      // Recibo — buscar pagamentos
+      const pagamentos = await api('GET', '/financeiro') || [];
+      const pag = pagamentos.find(p => String(p.paciente_id) === String(pacienteId) && p.status === 'pago')
+               || pagamentos.find(p => String(p.paciente_id) === String(pacienteId));
+
+      if (!pag) {
+        alert('Nenhum pagamento encontrado para este paciente.\nCadastre um pagamento primeiro.');
+        return;
+      }
+      // Enriquecer objeto paciente com dados do pagamento se disponíveis
+      if (pag.paciente?.usuario) {
+        paciente.nome  = paciente.nome  || pag.paciente.usuario.nome;
+        paciente.email = paciente.email || pag.paciente.usuario.email;
+      }
+
+      await _gerarRecibo(doc, paciente, pag);
+      _pdfFooter(doc);
+      doc.save(`recibo_${(paciente.nome || 'paciente').replace(/\s+/g, '_')}_${dataRef}.pdf`);
     }
-    const blob = await resp.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = blobUrl;
-    a.download = tipo === 'laudo' ? 'laudo.pdf' : 'recibo.pdf';
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-  } catch(e) {
-    alert('Erro ao baixar PDF: ' + e.message);
+
+  } catch (e) {
+    alert('Erro ao gerar PDF: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-file-earmark-pdf"></i> Gerar documento (PDF)'; }
   }
 }
