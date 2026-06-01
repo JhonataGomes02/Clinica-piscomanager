@@ -4,7 +4,7 @@ const cors      = require('cors');
 const path      = require('path');
 const sequelize = require('./config/database');
 
-// Registrar associações (singleton — só executa uma vez)
+// Registrar associações (singleton)
 require('./config/associations')();
 
 // App
@@ -21,6 +21,7 @@ app.use('/api/pacientes',   require('./routes/pacientes'));
 app.use('/api/sessoes',     require('./routes/sessoes'));
 app.use('/api/prontuarios', require('./routes/prontuarios'));
 app.use('/api/financeiro',  require('./routes/financeiro'));
+app.use('/api/google',      require('./routes/google'));
 app.use('/api',             require('./routes/misc'));
 
 app.get('*', (req, res) => {
@@ -30,13 +31,13 @@ app.get('*', (req, res) => {
 // Conectar ao banco
 sequelize.authenticate()
   .then(() => {
-    console.log('Conectado ao Supabase!');
+    console.log('✅ Conectado ao Supabase!');
     const isVercel = !!(process.env.VERCEL || process.env.NOW_REGION);
     if (!isVercel) {
       const PORT = process.env.PORT || 3033;
-      app.listen(PORT, () => console.log(`Rodando em http://localhost:${PORT}/login.html`));
+      app.listen(PORT, () => console.log(`🚀 http://localhost:${PORT}/login.html`));
     }
   })
-  .catch(err => console.error('Erro ao conectar:', err.message));
+  .catch(err => console.error('❌ Erro ao conectar:', err.message));
 
 module.exports = app;
