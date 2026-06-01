@@ -993,3 +993,76 @@ async function gerarDocumento() {
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-file-earmark-pdf"></i> Gerar documento (PDF)'; }
   }
 }
+
+// ══ GOOGLE CALENDAR ══════════════════════════════════════════
+
+async function verificarStatusGoogle() {
+  const status = document.getElementById('googleStatus');
+  const divCon = document.getElementById('googleConectado');
+  const divDes = document.getElementById('googleDesconectado');
+  if (!status) return;
+
+  const r = await api('GET', '/google/status');
+  if (!r) return;
+
+  if (r.conectado) {
+    status.textContent = '✅ Conectado';
+    status.style.color = '#00875A';
+    if (divCon) divCon.style.display = 'block';
+    if (divDes) divDes.style.display = 'none';
+  } else {
+    status.textContent = '⚪ Não conectado';
+    status.style.color = '#718096';
+    if (divCon) divCon.style.display = 'none';
+    if (divDes) divDes.style.display = 'block';
+  }
+}
+
+async function conectarGoogle() {
+  const r = await api('GET', '/google/conectar');
+  if (!r) return;
+  if (r.erro) return alert(r.erro);
+
+  // Abrir popup de autorização Google
+  // Passa o token JWT no state para recuperar após o callback
+  const token = localStorage.getItem('pm_token');
+  const url   = r.url + `&state=${encodeURIComponent(token)}`;
+  const popup = window.open(url, 'Google Calendar', 'width=500,height=600');
+
+  // Verificar quando o popup fechar
+  const timer = setInterval(() => {
+    if (popup.closed) {
+      clearInterval(timer);
+      verificarStatusGoogle();
+    }
+  }, 1000);
+}
+
+async function desconectarGoogle() {
+  if (!confirm('Desconectar o Google Calendar?')) return;
+  const r = await api('DELETE', '/google/desconectar', {});
+  if (r) { alert('Google Calendar desconectado.'); verificarStatusGoogle(); }
+}
+
+async function sincronizarTodas() {
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Sincronizando...'; }
+
+  const r = await api('POST', '/google/sincronizar-todas', {});
+
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Sincronizar todas as sessões'; }
+  if (r) alert('✅ ' + r.mensagem);
+}
+
+// Verificar parâmetro de retorno do Google OAuth na URL
+(function verificarRetornoGoogle() {
+  const params = new URLSearchParams(window.location.search);
+  const google = params.get('google');
+  if (google === 'conectado') {
+    alert('✅ Google Calendar conectado com sucesso!');
+    window.history.replaceState({}, '', '/index.html');
+  } else if (google === 'erro') {
+    alert('❌ Erro ao conectar o Google Calendar. Tente novamente.');
+    window.history.replaceState({}, '', '/index.html');
+  }
+})();
