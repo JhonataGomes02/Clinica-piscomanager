@@ -149,28 +149,49 @@
       </div>
     </div>
 
-    <!-- ══ AGENDA ══ -->
-    <div class="page" id="page-agenda">
-      <div class="page-header">
-        <div><div class="page-header-title">Agenda</div><div class="page-header-sub">Visualize e gerencie as sessões</div></div>
+   <!-- ══ AGENDA ══ -->
+<div class="page" id="page-agenda">
+  <div class="page-header">
+    <div><div class="page-header-title">Agenda</div><div class="page-header-sub">Visualize e gerencie as sessões</div></div>
+  </div>
+  <div class="card">
+    <div class="cal-nav">
+      <button class="cal-nav-btn" onclick="calAnterior()">&#8592;</button>
+      <div class="cal-nav-title" id="calTitulo">Calendário</div>
+      <button class="cal-nav-btn" onclick="calProximo()">&#8594;</button>
+      <button class="cal-nav-hoje" onclick="calHoje()">Hoje</button>
+    </div>
+    <div class="cal-legend">
+      <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#D1FAE5;border:1px solid #065F46"></div> Confirmada</div>
+      <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#FEF3C7;border:1px solid #92400E"></div> Agendada</div>
+      <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#FEE2E2;border:1px solid #991B1B"></div> Cancelada</div>
+      <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#E0E7FF;border:1px solid #3730A3"></div> Realizada</div>
+    </div>
+    <div id="calGrid" class="cal-v3-grid"></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">Novo agendamento</div></div>
+    <form id="formAgendamento">
+      <div class="form-row-2">
+        <div class="form-group"><label class="form-label">Paciente *</label><select id="agPacienteId" class="form-control" required></select></div>
+        <div class="form-group"><label class="form-label">Psicólogo *</label><select id="agPsicologoId" class="form-control" required></select></div>
       </div>
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title" id="calTitulo">Calendário</div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <span style="display:flex;align-items:center;gap:4px;font-size:12px"><span style="width:8px;height:8px;border-radius:50%;background:#00B87C;display:inline-block"></span>Confirmada</span>
-            <span style="display:flex;align-items:center;gap:4px;font-size:12px"><span style="width:8px;height:8px;border-radius:50%;background:#E17055;display:inline-block"></span>Cancelada</span>
-            <span style="display:flex;align-items:center;gap:4px;font-size:12px"><span style="width:8px;height:8px;border-radius:50%;background:#FDCB6E;display:inline-block"></span>Pendente</span>
-          </div>
+      <div class="form-row-3">
+        <div class="form-group"><label class="form-label">Data/hora início *</label><input id="agDataInicio" type="datetime-local" class="form-control" required/></div>
+        <div class="form-group"><label class="form-label">Data/hora fim *</label><input id="agDataFim" type="datetime-local" class="form-control" required/></div>
+        <div class="form-group"><label class="form-label">Modalidade</label>
+          <select id="agModalidade" class="form-control">
+            <option value="presencial">Presencial</option>
+            <option value="online">Online</option>
+            <option value="grupo">Grupo</option>
+          </select>
         </div>
-        <div class="cal-grid" style="margin-bottom:8px">
-          <div class="cal-day-header">Dom</div><div class="cal-day-header">Seg</div>
-          <div class="cal-day-header">Ter</div><div class="cal-day-header">Qua</div>
-          <div class="cal-day-header">Qui</div><div class="cal-day-header">Sex</div>
-          <div class="cal-day-header">Sáb</div>
-        </div>
-        <div class="cal-grid" id="calGrid"></div>
       </div>
+      <div class="form-group"><label class="form-label">Observações</label><textarea id="agObs" class="form-control" rows="2" placeholder="Observações sobre a sessão..."></textarea></div>
+      <button type="submit" class="btn-primary"><i class="bi bi-calendar-plus"></i> Confirmar agendamento</button>
+    </form>
+  </div>
+</div>
       <div class="card">
         <div class="card-header"><div class="card-title">Novo agendamento</div></div>
         <form id="formAgendamento">
