@@ -1066,3 +1066,120 @@ async function sincronizarTodas() {
     window.history.replaceState({}, '', '/index.html');
   }
 })();
+
+// ── CALENDÁRIO CORRIGIDO ──────────────────────────────────────
+async function renderCalendarioV2(ano, mes) {
+  const inicio = new Date(ano, mes, 1).toISOString();
+  const fim    = new Date(ano, mes + 1, 0, 23, 59, 59).toISOString();
+  const sessoes = await api('GET', `/sessoes?data_inicio=${inicio}&data_fim=${fim}`) || [];
+
+  const grid = document.getElementById('calGrid');
+  if (!grid) return;
+
+  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                 'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const titulo = document.getElementById('calTitulo');
+  if (titulo) titulo.textContent = meses[mes] + ' ' + ano;
+
+  const primeiroDia = new Date(ano, mes, 1).getDay();
+  const ultimoDia   = new Date(ano, mes + 1, 0).getDate();
+  const hoje        = new Date();
+
+  let html = '';
+
+  // Dias anteriores (cinza)
+  for (let i = 0; i < primeiroDia; i++) {
+    const d = new Date(ano, mes, -primeiroDia + i + 1).getDate();
+    html += `<div class="cal-cell other"><div class="cal-num">${d}</div></div>`;
+  }
+
+  // Dias do mês
+  for (let d = 1; d <= ultimoDia; d++) {
+    const isHoje = d === hoje.getDate() && mes === hoje.getMonth() && ano === hoje.getFullYear();
+
+    // Filtrar sessões deste dia
+    const daySessoes = sessoes.filter(s => {
+      const dataS = new Date(s.data_hora_inicio);
+      return dataS.getDate() === d && dataS.getMonth() === mes && dataS.getFullYear() === ano;
+    });
+
+    // Mostrar até 2 eventos + indicador de extras
+    const visiveis = daySessoes.slice(0, 2);
+    const extras   = daySessoes.length - visiveis.length;
+
+    const events = visiveis.map(s => {
+      const cls  = { confirmada:'green', agendada:'yellow', cancelada:'red', realizada:'green' }[s.status] || 'yellow';
+      const hora = new Date(s.data_hora_inicio).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+      // Pegar nome completo do paciente
+      const nome = s.paciente?.usuario?.nome || s.paciente?.nome || '—';
+      // Mostrar primeiro e segundo nome
+      const nomeExibido = nome.split(' ').slice(0,2).join(' ');
+      return `<div class="cal-ev ${cls}" title="${nome} — ${hora}">${hora} ${nomeExibido}</div>`;
+    }).join('');
+
+    const extraHtml = extras > 0
+      ? `<div style="font-size:10px;color:#718096;margin-top:2px;font-weight:500">+${extras} mais</div>`
+      : '';
+
+    html += `<div class="cal-cell${isHoje ? ' today' : ''}" onclick="verDetalhesDia(${d}, ${mes}, ${ano})">
+               <div class="cal-num">${d}</div>
+               ${events}
+               ${extraHtml}
+             </div>`;
+  }
+
+  grid.innerHTML = html;
+}
+
+// Ver detalhes de todos os eventos do dia ao clicar na célula
+async function verDetalhesDia(dia, mes, ano) {
+  const inicio  = new Date(ano, mes, dia, 0, 0, 0).toISOString();
+  const fim     = new Date(ano, mes, dia, 23, 59, 59).toISOString();
+  const sessoes = await api('GET', `/sessoes?data_inicio=${inicio}&data_fim=${fim}`) || [];
+
+  if (sessoes.length === 0) return;
+
+  const data = new Date(ano, mes, dia).toLocaleDateString('pt-BR');
+  let msg = `📅 Sessões em ${data}:\n\n`;
+
+  sessoes.forEach(s => {
+    const hora  = new Date(s.data_hora_inicio).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+    const nome  = s.paciente?.usuario?.nome || '—';
+    const status = { confirmada:'✅', agendada:'🟡', cancelada:'❌', realizada:'✔️' }[s.status] || '⚪';
+    msg += `${status} ${hora} — ${nome} (${s.modalidade})\n`;
+  });
+
+  alert(msg);
+}
+
+// Sobrescrever a função agenda para usar a nova versão do calendário
+const _agendaOriginal = window.agenda;
+window.agenda = async function() {
+  const hoje = new Date();
+  await renderCalendarioV2(hoje.getFullYear(), hoje.getMonth());
+  await carregarSelectPacientes('agPacienteId');
+  await carregarSelectPsicologos('agPsicologoId');
+  await verificarStatusGoogle();
+
+  const form = document.getElementById('formAgendamento');
+  if (form && !form.dataset.bound) {
+    form.dataset.bound = '1';
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const body = {
+        paciente_id:      document.getElementById('agPacienteId').value,
+        psicologo_id:     document.getElementById('agPsicologoId').value,
+        data_hora_inicio: document.getElementById('agDataInicio').value,
+        data_hora_fim:    document.getElementById('agDataFim').value,
+        modalidade:       document.getElementById('agModalidade').value,
+        observacoes:      document.getElementById('agObs').value,
+      };
+      const r = await api('POST', '/sessoes', body);
+      if (r) {
+        alert('Sessão agendada com sucesso!');
+        e.target.reset();
+        await renderCalendarioV2(hoje.getFullYear(), hoje.getMonth());
+      }
+    });
+  }
+};
