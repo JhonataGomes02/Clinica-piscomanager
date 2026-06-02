@@ -1183,3 +1183,138 @@ window.agenda = async function() {
     });
   }
 };
+
+// ══ CALENDÁRIO V3 — Estilo Google Calendar ════════════════════
+let calAno = new Date().getFullYear();
+let calMes = new Date().getMonth();
+
+async function renderCalendarioV3(ano, mes) {
+  calAno = ano; calMes = mes;
+
+  const inicio  = new Date(ano, mes, 1).toISOString();
+  const fim     = new Date(ano, mes + 1, 0, 23, 59, 59).toISOString();
+  const sessoes = await api('GET', `/sessoes?data_inicio=${inicio}&data_fim=${fim}`) || [];
+
+  const grid = document.getElementById('calGrid');
+  if (!grid) return;
+
+  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                 'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  // Atualizar título e nav
+  const titulo = document.getElementById('calTitulo');
+  if (titulo) titulo.textContent = meses[mes] + ' ' + ano;
+
+  const primeiroDia = new Date(ano, mes, 1).getDay();
+  const ultimoDia   = new Date(ano, mes + 1, 0).getDate();
+  const hoje        = new Date();
+
+  // Trocar classe do container do grid
+  grid.className = 'cal-v3-grid';
+
+  let html = '';
+
+  // Cabeçalho dos dias
+  ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].forEach(d => {
+    html += `<div class="cal-v3-header">${d}</div>`;
+  });
+
+  // Dias anteriores
+  for (let i = 0; i < primeiroDia; i++) {
+    const d = new Date(ano, mes, -primeiroDia + i + 1).getDate();
+    html += `<div class="cal-v3-cell other"><div class="cal-v3-num">${d}</div></div>`;
+  }
+
+  // Dias do mês
+  for (let d = 1; d <= ultimoDia; d++) {
+    const isHoje = d === hoje.getDate() && mes === hoje.getMonth() && ano === hoje.getFullYear();
+
+    // Sessões deste dia
+    const daySessoes = sessoes.filter(s => {
+      const dt = new Date(s.data_hora_inicio);
+      return dt.getDate() === d && dt.getMonth() === mes && dt.getFullYear() === ano;
+    }).sort((a,b) => new Date(a.data_hora_inicio) - new Date(b.data_hora_inicio));
+
+    // Mostrar até 4, depois "+N mais"
+    const MAX = 4;
+    const visiveis = daySessoes.slice(0, MAX);
+    const extras   = daySessoes.length - visiveis.length;
+
+    const evHtml = visiveis.map(s => {
+      const hora  = new Date(s.data_hora_inicio).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+      const nome  = s.paciente?.usuario?.nome || s.paciente?.nome || 'Paciente';
+      const label = `${hora} · ${nome}`;
+      return `<span class="cal-v3-ev ev-${s.status}" title="${nome} — ${hora} (${s.status})">${label}</span>`;
+    }).join('');
+
+    const maisHtml = extras > 0
+      ? `<div class="cal-v3-mais" onclick="verDetalhesDiaV3(${d},${mes},${ano})">+${extras} mais</div>`
+      : '';
+
+    html += `
+      <div class="cal-v3-cell${isHoje ? ' today' : ''}"
+           onclick="verDetalhesDiaV3(${d},${mes},${ano})">
+        <div class="cal-v3-num">${d}</div>
+        ${evHtml}
+        ${maisHtml}
+      </div>`;
+  }
+
+  grid.innerHTML = html;
+}
+
+async function verDetalhesDiaV3(dia, mes, ano) {
+  const ini  = new Date(ano, mes, dia, 0, 0, 0).toISOString();
+  const fim  = new Date(ano, mes, dia, 23, 59, 59).toISOString();
+  const list = await api('GET', `/sessoes?data_inicio=${ini}&data_fim=${fim}`) || [];
+
+  if (list.length === 0) return;
+
+  const data = new Date(ano, mes, dia).toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' });
+  const icon = { confirmada:'🟢', agendada:'🟡', cancelada:'🔴', realizada:'🔵' };
+  let msg = `📅 ${data}\n${'─'.repeat(35)}\n\n`;
+
+  list.sort((a,b) => new Date(a.data_hora_inicio) - new Date(b.data_hora_inicio))
+      .forEach(s => {
+        const hora = new Date(s.data_hora_inicio).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+        const nome = s.paciente?.usuario?.nome || '—';
+        msg += `${icon[s.status]||'⚪'} ${hora}  ${nome}\n   ${s.modalidade} · ${s.status}\n\n`;
+      });
+
+  alert(msg);
+}
+
+// Navegação do calendário
+function calAnterior() { calMes--; if(calMes<0){calMes=11;calAno--;} renderCalendarioV3(calAno,calMes); }
+function calProximo()  { calMes++; if(calMes>11){calMes=0;calAno++;} renderCalendarioV3(calAno,calMes); }
+function calHoje()     { calAno=new Date().getFullYear(); calMes=new Date().getMonth(); renderCalendarioV3(calAno,calMes); }
+
+// Sobrescrever função agenda com V3
+window.agenda = async function() {
+  await renderCalendarioV3(calAno, calMes);
+  await carregarSelectPacientes('agPacienteId');
+  await carregarSelectPsicologos('agPsicologoId');
+  await verificarStatusGoogle();
+
+  const form = document.getElementById('formAgendamento');
+  if (form && !form.dataset.bound) {
+    form.dataset.bound = '1';
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const body = {
+        paciente_id:      document.getElementById('agPacienteId').value,
+        psicologo_id:     document.getElementById('agPsicologoId').value,
+        data_hora_inicio: document.getElementById('agDataInicio').value,
+        data_hora_fim:    document.getElementById('agDataFim').value,
+        modalidade:       document.getElementById('agModalidade').value,
+        observacoes:      document.getElementById('agObs').value,
+      };
+      const r = await api('POST', '/sessoes', body);
+      if (r) {
+        alert('Sessão agendada!');
+        e.target.reset();
+        renderCalendarioV3(calAno, calMes);
+      }
+    });
+  }
+};
