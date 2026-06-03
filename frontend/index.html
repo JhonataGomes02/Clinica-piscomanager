@@ -61,6 +61,85 @@
 .cal-legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #4A5568; }
 .cal-legend-dot  { width: 10px; height: 10px; border-radius: 3px; }
 </style>
+
+  <style>
+/* ═══════════════════════════════════════════
+   RESPONSIVIDADE MOBILE — PsicoManager
+   ═══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  #mainContent { margin-left: 0 !important; }
+  .topbar {
+    padding: 0 12px !important;
+    height: 52px !important;
+    position: fixed !important;
+    top: 0; left: 0; right: 0; z-index: 150;
+  }
+  .topbar-title { font-size: 14px !important; }
+  .btn-menu-mobile { display: flex !important; }
+  .page-content { padding: 12px !important; margin-top: 52px; }
+
+  #sidebar {
+    transform: translateX(-100%) !important;
+    position: fixed !important;
+    z-index: 300 !important;
+    width: 260px !important;
+    height: 100vh !important;
+    box-shadow: 4px 0 20px rgba(0,0,0,.3);
+  }
+  #sidebar.open { transform: translateX(0) !important; }
+  .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 250; }
+  .sidebar-overlay.show { display: block !important; }
+
+  .metrics-grid { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+  .metric-value { font-size: 20px !important; }
+  .metric-card  { padding: 14px !important; }
+
+  [style*="grid-template-columns:2fr 1fr"],
+  [style*="grid-template-columns: 2fr 1fr"],
+  [style*="grid-template-columns:1fr 1fr"],
+  [style*="grid-template-columns: 1fr 1fr"] {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .form-row-2, .form-row-3 { grid-template-columns: 1fr !important; gap: 10px !important; }
+
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { min-width: 500px; }
+  thead th, tbody td { padding: 8px 10px !important; font-size: 12px !important; }
+
+  .card { padding: 14px !important; margin-bottom: 12px !important; }
+  .card-header { flex-wrap: wrap; gap: 8px; }
+  .card-title { font-size: 13px !important; }
+
+  .page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    margin-bottom: 14px !important;
+  }
+  .page-header-title { font-size: 17px !important; }
+
+  .btn-primary { padding: 8px 12px !important; font-size: 12px !important; }
+  .d-none-sm   { display: none !important; }
+
+  .tab-nav { overflow-x: auto; }
+  .tab-btn { white-space: nowrap; padding: 8px 12px !important; font-size: 12px !important; }
+
+  .cal-v3-cell   { min-height: 60px !important; padding: 4px 2px !important; }
+  .cal-v3-ev     { font-size: 9px !important; padding: 2px 3px !important; }
+  .cal-v3-num    { font-size: 10px !important; width: 20px !important; height: 20px !important; }
+  .cal-nav-title { font-size: 13px !important; min-width: 120px !important; }
+
+  #chartReceita, #chartStatus { max-height: 180px; }
+}
+
+@media (max-width: 400px) {
+  .metrics-grid { grid-template-columns: 1fr !important; }
+  .cal-v3-ev    { display: none !important; }
+  .cal-v3-cell  { min-height: 44px !important; }
+}
+</style>
 </head>
 <body>
 
