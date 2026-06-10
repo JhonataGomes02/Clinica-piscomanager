@@ -1098,7 +1098,7 @@ async function renderCalendarioV2(ano, mes) {
     const isHoje = d === hoje.getDate() && mes === hoje.getMonth() && ano === hoje.getFullYear();
 
     // Filtrar sessões deste dia
-    const daySessoes = sessoes.filter(s => {
+    const daySessoes = sessoesVisiveis.filter(s => {
       const dataS = new Date(s.data_hora_inicio);
       return dataS.getDate() === d && dataS.getMonth() === mes && dataS.getFullYear() === ano;
     });
@@ -1194,7 +1194,14 @@ async function renderCalendarioV3(ano, mes) {
   const inicio  = new Date(ano, mes, 1).toISOString();
   const fim     = new Date(ano, mes + 1, 0, 23, 59, 59).toISOString();
   const sessoes = await api('GET', `/sessoes?data_inicio=${inicio}&data_fim=${fim}`) || [];
-
+  // Filtrar por paciente se o usuário logado for paciente
+let sessoesVisiveis = sessoes;
+if (USUARIO?.perfil === 'paciente') {
+  sessoesVisiveis = sessoes.filter(s => {
+    const nomePaciente = s.paciente?.usuario?.nome || '';
+    return nomePaciente === USUARIO.nome;
+  });
+}
   const grid = document.getElementById('calGrid');
   if (!grid) return;
 
@@ -1230,7 +1237,7 @@ async function renderCalendarioV3(ano, mes) {
     const isHoje = d === hoje.getDate() && mes === hoje.getMonth() && ano === hoje.getFullYear();
 
     // Sessões deste dia
-    const daySessoes = sessoes.filter(s => {
+    const daySessoes = sessoesVisiveis.filter(s => {
       const dt = new Date(s.data_hora_inicio);
       return dt.getDate() === d && dt.getMonth() === mes && dt.getFullYear() === ano;
     }).sort((a,b) => new Date(a.data_hora_inicio) - new Date(b.data_hora_inicio));
