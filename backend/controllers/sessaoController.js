@@ -3,29 +3,42 @@ const { Op } = require('sequelize');
 
 async function listar(req, res) {
   try {
-    const { mes, ano, psicologo_id, status } = req.query;
+    const { data_inicio, data_fim, psicologo_id, status } = req.query;
     const where = {};
-    if (status) where.status = status;
-    if (psicologo_id) where.psicologo_id = psicologo_id;
-    else if (req.usuario.perfil === 'psicologo') where.psicologo_id = req.usuario.id;
-    if (mes && ano) {
-      const inicio = new Date(ano, mes - 1, 1);
-      const fim = new Date(ano, mes, 0, 23, 59, 59);
-      where.data_hora_inicio = { [Op.between]: [inicio, fim] };
+
+    // Psicólogo vê só as próprias sessões
+    if (req.usuario.perfil === 'psicologo') {
+      where.psicologo_id = req.usuario.id;
     }
+    // Paciente vê SOMENTE as sessões dele
+    else if (req.usuario.perfil === 'paciente') {
+      const Paciente = require('../models/Paciente');
+      const paciente = await Paciente.findOne({ where: { usuario_id: req.usuario.id } });
+      if (!paciente) return res.json([]);
+      where.paciente_id = paciente.id;
+    }
+    // Admin vê tudo (com filtro opcional)
+    else if (psicologo_id) {
+      where.psicologo_id = psicologo_id;
+    }
+
+    if (status) where.status = status;
+    if (data_inicio && data_fim)
+      where.data_hora_inicio = { [Op.between]: [new Date(data_inicio), new Date(data_fim)] };
+
     const sessoes = await Sessao.findAll({
       where,
       include: [
-        { model: Paciente, as: 'paciente', include: [{ model: Usuario, as: 'usuario', attributes: ['nome', 'email'] }] },
-        { model: Usuario, as: 'psicologo', attributes: ['nome', 'crp'] },
-        { model: Sala, as: 'sala' }
+        { model: Paciente, as: 'paciente', include: [{ model: Usuario, as: 'usuario', attributes: ['nome'] }] },
+        { model: Usuario,  as: 'psicologo', attributes: ['nome'] },
       ],
-      order: [['data_hora_inicio', 'ASC']]
+      order: [['data_hora_inicio', 'ASC']],
     });
-    res.json(sessoes);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ erro: 'Erro ao listar sessões.' });
+
+    return res.json(sessoes);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ erro: 'Erro ao listar sessões.' });
   }
 }
 
@@ -65,23 +78,30 @@ async function atualizarStatus(req, res) {
 
 async function hoje(req, res) {
   try {
-    const hoje = new Date();
-    const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0);
-    const fim = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59);
-    const where = { data_hora_inicio: { [Op.between]: [inicio, fim] } };
-    if (req.usuario.perfil === 'psicologo') where.psicologo_id = req.usuario.id;
+    const inicio = new Date(); inicio.setHours(0,0,0,0);
+    const fim    = new Date(); fim.setHours(23,59,59,999);
+    const where  = { data_hora_inicio: { [Op.between]: [inicio, fim] } };
+
+    if (req.usuario.perfil === 'psicologo') {
+      where.psicologo_id = req.usuario.id;
+    } else if (req.usuario.perfil === 'paciente') {
+      const Paciente = require('../models/Paciente');
+      const paciente = await Paciente.findOne({ where: { usuario_id: req.usuario.id } });
+      if (!paciente) return res.json([]);
+      where.paciente_id = paciente.id;
+    }
+
     const sessoes = await Sessao.findAll({
       where,
       include: [
         { model: Paciente, as: 'paciente', include: [{ model: Usuario, as: 'usuario', attributes: ['nome'] }] },
-        { model: Sala, as: 'sala' }
+        { model: Usuario,  as: 'psicologo', attributes: ['nome'] },
       ],
-      order: [['data_hora_inicio', 'ASC']]
+      order: [['data_hora_inicio', 'ASC']],
     });
-    res.json(sessoes);
-  } catch (err) {
-    res.status(500).json({ erro: 'Erro ao buscar sessões de hoje.' });
+    return res.json(sessoes);
+  } catch (e) {
+    return res.status(500).json({ erro: 'Erro ao buscar sessões de hoje.' });
   }
 }
-
 module.exports = { listar, criar, atualizarStatus, hoje };
